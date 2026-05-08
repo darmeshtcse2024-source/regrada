@@ -1,0 +1,48 @@
+{
+  "last_updated": "2026-05-02T12:22:22.096033",
+  "total": 3,
+  "alerts": [
+    {
+      "id": "gst-live-001",
+      "title": "Skip to Main Content",
+      "date": "2026-05-02",
+      "category": "GST Update",
+      "affects": [
+        "general"
+      ],
+      "source": "gst.gov.in",
+      "url": "https://www.gst.gov.injavascript:void(0)",
+      "raw_text": "Skip to Main Content",
+      "scraped_at": "2026-05-02T12:22:22.094079",
+      "is_sample": false
+    },
+    {
+      "id": "gst-live-003",
+      "title": "Goods and Services Tax Government of India, States and Union Territories",
+      "date": "2026-05-02",
+      "category": "GST Update",
+      "affects": [
+        "general"
+      ],
+      "source": "gst.gov.in",
+      "url": "https://www.gst.gov.in//www.gst.gov.in/",
+      "raw_text": "Goods and Services Tax Government of India, States and Union Territories",
+      "scraped_at": "2026-05-02T12:22:22.094139",
+      "is_sample": false
+    },
+    {
+      "id": "gst-live-008",
+      "title": "Register / Update DSC",
+      "date": "2026-05-02",
+      "category": "GST Update",
+      "affects": [
+        "general"
+      ],
+      "source": "gst.gov.in",
+      "url": "https://www.gst.gov.in//reg.gst.gov.in/registration/auth/register/dsc",
+      "raw_text": "Register / Update DSC",
+      "scraped_at": "2026-05-02T12:22:22.094187",
+      "is_sample": false
+    }
+  ]
+}
