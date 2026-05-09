@@ -1,18 +1,17 @@
 import streamlit as st
 import json
 import os
+from groq import Groq
 from dotenv import load_dotenv
-from google import genai
 
 load_dotenv()
 
 # ─────────────────────────────────────────────
-# SETUP
+# SETUP GROQ
 # ─────────────────────────────────────────────
 try:
-    api_key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
-    client = genai.Client(api_key=api_key)
-    MODEL = "gemini-2.0-flash-lite"
+    api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
+    client = Groq(api_key=api_key)
 except Exception as e:
     st.error(f"API setup error: {e}")
 
@@ -114,7 +113,8 @@ def filter_alerts(alerts, business_type):
     relevant = []
     keywords = BUSINESS_KEYWORDS.get(business_type, [])
     for alert in alerts:
-        if business_type in alert.get("affects", []) or "general" in alert.get("affects", []):
+        if business_type in alert.get("affects", []) or \
+           "general" in alert.get("affects", []):
             if alert not in relevant:
                 relevant.append(alert)
             continue
@@ -125,30 +125,32 @@ def filter_alerts(alerts, business_type):
                 relevant.append(alert)
     return relevant
 
-def call_gemini(prompt):
+def call_groq(prompt):
     try:
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=prompt
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.7
         )
-        return response.text.strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error: {str(e)}"
 
 def explain_english(alert, business_type):
     prompt = f"""You are a GST advisor helping Indian small business owners.
 
-A {business_type} owner needs to understand this alert:
+A {business_type} owner needs to understand this GST alert:
 Title: {alert['title']}
 Details: {alert['raw_text']}
 
 Write exactly 3 simple sentences:
 1. What the rule says
-2. How it affects a {business_type}
+2. How it affects a {business_type} owner
 3. What action to take
 
 No jargon. No bullet points. Plain simple English only."""
-    return call_gemini(prompt)
+    return call_groq(prompt)
 
 def translate_tamil(text):
     prompt = f"""Translate this to simple Tamil that a small shop owner in Tamil Nadu understands.
@@ -157,7 +159,7 @@ Use everyday conversational Tamil, not legal Tamil.
 Text: {text}
 
 Give only the Tamil translation, nothing else."""
-    return call_gemini(prompt)
+    return call_groq(prompt)
 
 def answer_question(question, business_type, alerts):
     context = "\n".join([
@@ -173,9 +175,8 @@ Recent GST alerts:
 {context}
 
 Answer in 3-4 simple sentences. Be direct and practical.
-If unsure, say "Please verify with your CA."
-Do not make up rules not mentioned above."""
-    return call_gemini(prompt)
+If unsure say: Please verify with your CA."""
+    return call_groq(prompt)
 
 
 # ─────────────────────────────────────────────
@@ -228,7 +229,6 @@ relevant_alerts = filter_alerts(all_alerts, business_type)
 if not relevant_alerts:
     st.warning("No alerts found for this business type.")
 else:
-    # Stats
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f'<div class="stat-box"><div class="stat-num">{len(relevant_alerts)}</div><div class="stat-label">Active Alerts</div></div>', unsafe_allow_html=True)
@@ -241,7 +241,6 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Cache key for this business
     cache_key = f"enriched_{business_type}"
 
     if cache_key not in st.session_state:
@@ -282,9 +281,8 @@ st.markdown("---")
 # SCREEN 3 — Q&A CHAT
 # ─────────────────────────────────────────────
 st.markdown("### 💬 Ask RegRadar")
-st.markdown("Type any GST question — RegRadar answers based on latest alerts.")
+st.markdown("Type any GST question — RegRadar answers instantly.")
 
-# Quick question buttons
 st.markdown("**Quick questions:**")
 c1, c2, c3 = st.columns(3)
 
@@ -301,24 +299,20 @@ with c3:
     if st.button("⚠️ What deadlines are coming?"):
         st.session_state.question_input = "What GST deadlines are coming up soon?"
 
-# Text input
 user_q = st.text_input(
     "Your question:",
     value=st.session_state.question_input,
     placeholder="e.g. Do I need e-invoicing? When is my GST deadline?"
 )
 
-# Get Answer button
 if st.button("🔍 Get Answer", type="primary"):
     if user_q.strip():
         with st.spinner("RegRadar is thinking..."):
             ans = answer_question(user_q, business_type, relevant_alerts)
         st.session_state["last_answer"] = ans
-        st.session_state["last_question"] = user_q
     else:
         st.warning("Please type a question first.")
 
-# Show answer
 if "last_answer" in st.session_state:
     st.markdown(f"""
     <div class="chat-answer">
