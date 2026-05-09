@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ─────────────────────────────────────────────
-# SETUP — OpenRouter (free AI)
+# SETUP — OpenRouter
 # ─────────────────────────────────────────────
 API_KEY = os.getenv("OPENROUTER_API_KEY") or st.secrets.get("OPENROUTER_API_KEY", "")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -89,9 +89,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # ─────────────────────────────────────────────
-# BUSINESS DATA
+# DATA
 # ─────────────────────────────────────────────
 BUSINESS_KEYWORDS = {
     "restaurant": ["restaurant", "food", "hotel", "catering", "dining"],
@@ -111,6 +110,14 @@ BUSINESS_OPTIONS = {
     "🏢  General / Other Business":     "general",
 }
 
+# Try multiple free models in order until one works
+FREE_MODELS = [
+    "google/gemma-3-1b-it:free",
+    "qwen/qwen3-0.6b:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "deepseek/deepseek-r1-0528:free",
+    "microsoft/phi-3-mini-128k-instruct:free",
+]
 
 # ─────────────────────────────────────────────
 # FUNCTIONS
@@ -139,32 +146,41 @@ def filter_alerts(alerts, business_type):
     return relevant
 
 def call_ai(prompt):
-    try:
-        response = requests.post(
-            API_URL,
-            headers=HEADERS,
-            json={
-                "model": "mistralai/mistral-7b-instruct:free",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 400
-            },
-            timeout=30
-        )
-        data = response.json()
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"].strip()
-        elif "error" in data:
-            return f"AI error: {data['error'].get('message', 'Unknown error')}"
-        return "No response received. Please try again."
-    except requests.exceptions.Timeout:
-        return "Request timed out. Please try again."
-    except Exception as e:
-        return f"Error: {str(e)}"
+    # Try each model until one works
+    for model in FREE_MODELS:
+        try:
+            response = requests.post(
+                API_URL,
+                headers=HEADERS,
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 400,
+                    "temperature": 0.7
+                },
+                timeout=30
+            )
+            data = response.json()
+
+            if "choices" in data and len(data["choices"]) > 0:
+                text = data["choices"][0]["message"]["content"].strip()
+                if text:
+                    return text
+
+            # If this model failed, try next one
+            continue
+
+        except requests.exceptions.Timeout:
+            continue
+        except Exception:
+            continue
+
+    return "All AI models are currently busy. Please try again in 30 seconds."
 
 def explain_english(alert, business_type):
     return call_ai(f"""You are a GST advisor for Indian small businesses.
 
-A {business_type} owner needs to understand this alert:
+A {business_type} owner needs to understand this GST alert:
 Title: {alert['title']}
 Details: {alert['raw_text']}
 
@@ -173,11 +189,11 @@ Write exactly 3 simple sentences:
 2. How it affects a {business_type} owner
 3. What action to take
 
-No jargon. No bullets. Plain English only.""")
+No jargon. No bullet points. Plain simple English only.""")
 
 def translate_tamil(text):
-    return call_ai(f"""Translate to simple Tamil for a small shop owner in Tamil Nadu.
-Conversational Tamil only, not legal language.
+    return call_ai(f"""Translate this to simple Tamil for a small shop owner in Tamil Nadu.
+Use conversational Tamil, not legal language.
 Give only the Tamil translation, nothing else.
 
 English: {text}""")
@@ -187,19 +203,19 @@ def answer_question(question, business_type, alerts):
         f"- {a['title']}: {a['raw_text'][:120]}"
         for a in alerts[:4]
     ])
-    return call_ai(f"""You are RegRadar, GST assistant for Indian MSMEs.
+    return call_ai(f"""You are RegRadar, a GST compliance assistant for Indian small businesses.
 
-Business: {business_type}
+Business type: {business_type}
 Question: {question}
 
-GST context:
+GST alerts context:
 {context}
 
-Answer in 3 clear sentences. Say "Please verify with your CA" if unsure.""")
+Answer in 3 clear practical sentences. Say "Please verify with your CA" if unsure.""")
 
 
 # ─────────────────────────────────────────────
-# UI
+# HEADER
 # ─────────────────────────────────────────────
 st.markdown("""
 <div class="main-header">
@@ -208,16 +224,22 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Business selector
+
+# ─────────────────────────────────────────────
+# SCREEN 1 — BUSINESS SELECTOR
+# ─────────────────────────────────────────────
 st.markdown("### 🏪 Select Your Business Type")
 selected_label = st.selectbox("Choose your business:", list(BUSINESS_OPTIONS.keys()))
 business_type = BUSINESS_OPTIONS[selected_label]
 st.markdown("---")
 
-# Load alerts
-st.markdown("### 📋 Your GST Alerts")
-all_alerts = load_alerts()
 
+# ─────────────────────────────────────────────
+# SCREEN 2 — ALERT DASHBOARD
+# ─────────────────────────────────────────────
+st.markdown("### 📋 Your GST Alerts")
+
+all_alerts = load_alerts()
 if not all_alerts:
     st.error("alerts.json not found. Please add it to your GitHub repo.")
     st.stop()
@@ -227,7 +249,7 @@ relevant_alerts = filter_alerts(all_alerts, business_type)
 if not relevant_alerts:
     st.warning("No alerts found for this business type.")
 else:
-    # Stats
+    # Stats row
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f'<div class="stat-box"><div class="stat-num">{len(relevant_alerts)}</div><div class="stat-label">Active Alerts</div></div>', unsafe_allow_html=True)
@@ -236,87 +258,3 @@ else:
         st.markdown(f'<div class="stat-box"><div class="stat-num">{d}</div><div class="stat-label">Deadlines</div></div>', unsafe_allow_html=True)
     with col3:
         r = len([a for a in relevant_alerts if a.get("category") == "Rate Change"])
-        st.markdown(f'<div class="stat-box"><div class="stat-num">{r}</div><div class="stat-label">Rate Changes</div></div>', unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Generate and cache alerts
-    cache_key = f"enriched_{business_type}"
-    if cache_key not in st.session_state:
-        with st.spinner("🤖 RegRadar AI is reading your GST alerts..."):
-            enriched = []
-            for alert in relevant_alerts[:3]:
-                eng = explain_english(alert, business_type)
-                tam = translate_tamil(eng)
-                enriched.append({
-                    "title": alert["title"],
-                    "date": alert["date"],
-                    "category": alert["category"],
-                    "english": eng,
-                    "tamil": tam
-                })
-            st.session_state[cache_key] = enriched
-
-    for item in st.session_state[cache_key]:
-        st.markdown(f"""
-        <div class="alert-card">
-            <div class="alert-title">{item['title']}</div>
-            <div class="alert-meta">
-                <span class="category-badge">{item['category']}</span>
-                📅 {item['date']}
-            </div>
-            <div class="alert-eng">{item['english']}</div>
-            <div class="tamil-label">🇮🇳 தமிழில் படிக்கவும்</div>
-            <div class="alert-tamil">{item['tamil']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-# Q&A
-st.markdown("### 💬 Ask RegRadar")
-st.markdown("Type any GST question — RegRadar answers instantly.")
-
-if "question_input" not in st.session_state:
-    st.session_state.question_input = ""
-
-c1, c2, c3 = st.columns(3)
-with c1:
-    if st.button("📅 Do I need to file GSTR-9?"):
-        st.session_state.question_input = "Do I need to file GSTR-9 this year?"
-with c2:
-    if st.button("💰 Any rate changes for me?"):
-        st.session_state.question_input = f"Any GST rate changes for my {business_type}?"
-with c3:
-    if st.button("⚠️ What deadlines are coming?"):
-        st.session_state.question_input = "What GST deadlines are coming up soon?"
-
-user_q = st.text_input(
-    "Your question:",
-    value=st.session_state.question_input,
-    placeholder="e.g. Do I need e-invoicing? When is my GST deadline?"
-)
-
-if st.button("🔍 Get Answer", type="primary"):
-    if user_q.strip():
-        with st.spinner("RegRadar is thinking..."):
-            ans = answer_question(user_q, business_type, relevant_alerts)
-        st.session_state["last_answer"] = ans
-    else:
-        st.warning("Please type a question first.")
-
-if "last_answer" in st.session_state:
-    st.markdown(f"""
-    <div class="chat-answer">
-        <strong>RegRadar:</strong><br><br>
-        {st.session_state['last_answer']}
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("---")
-st.markdown(
-    "<p style='text-align:center;color:#a0aec0;font-size:0.8rem'>"
-    "RegRadar — Built for ET AI Hackathon 2.0 | Not a substitute for professional CA advice"
-    "</p>",
-    unsafe_allow_html=True
-)
