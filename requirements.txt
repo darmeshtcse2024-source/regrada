@@ -1,5 +1,6 @@
 streamlit
 groq
+requests
 python-dotenv
 beautifulsoup4
-requests
+httpx
