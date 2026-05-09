@@ -12,7 +12,7 @@ load_dotenv()
 try:
     api_key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
     client = genai.Client(api_key=api_key)
-    MODEL = "gemini-1.5-flash"
+    MODEL =  "gemini-2.0-flash"
 except Exception as e:
     st.error(f"API setup error: {e}")
 
