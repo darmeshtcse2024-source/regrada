@@ -1,48 +1,90 @@
 {
-  "last_updated": "2026-05-02T12:22:22.096033",
-  "total": 3,
+  "last_updated": "2026-05-09T00:00:00",
+  "total": 7,
   "alerts": [
     {
-      "id": "gst-live-001",
-      "title": "Skip to Main Content",
-      "date": "2026-05-02",
-      "category": "GST Update",
-      "affects": [
-        "general"
-      ],
-      "source": "gst.gov.in",
-      "url": "https://www.gst.gov.injavascript:void(0)",
-      "raw_text": "Skip to Main Content",
-      "scraped_at": "2026-05-02T12:22:22.094079",
-      "is_sample": false
+      "id": "gst-001",
+      "title": "GSTR-3B filing deadline extended to 22nd for small taxpayers",
+      "date": "2025-04-28",
+      "category": "Filing Deadline",
+      "affects": ["restaurant", "kirana", "textile", "pharmacy", "general"],
+      "source": "GST Council Notification 12/2025",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "The GST Council has extended the due date for filing GSTR-3B for taxpayers with annual aggregate turnover up to Rs.5 crore. The new deadline is the 22nd of the following month for Category X states and 24th for Category Y states. This relief applies to quarterly filers under the QRMP scheme.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
     },
     {
-      "id": "gst-live-003",
-      "title": "Goods and Services Tax Government of India, States and Union Territories",
-      "date": "2026-05-02",
-      "category": "GST Update",
-      "affects": [
-        "general"
-      ],
-      "source": "gst.gov.in",
-      "url": "https://www.gst.gov.in//www.gst.gov.in/",
-      "raw_text": "Goods and Services Tax Government of India, States and Union Territories",
-      "scraped_at": "2026-05-02T12:22:22.094139",
-      "is_sample": false
+      "id": "gst-002",
+      "title": "E-invoicing mandatory for businesses above Rs.5 crore turnover",
+      "date": "2025-04-20",
+      "category": "Compliance Mandate",
+      "affects": ["restaurant", "textile", "it_services", "general"],
+      "source": "CBIC Circular 04/2025",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "The Central Board of Indirect Taxes and Customs has notified that e-invoicing is now mandatory for all registered taxpayers with an aggregate annual turnover exceeding Rs.5 crore. Businesses must integrate with the Invoice Registration Portal before 1st June 2025 or face a penalty of Rs.10,000 per invoice.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
     },
     {
-      "id": "gst-live-008",
-      "title": "Register / Update DSC",
-      "date": "2026-05-02",
-      "category": "GST Update",
-      "affects": [
-        "general"
-      ],
-      "source": "gst.gov.in",
-      "url": "https://www.gst.gov.in//reg.gst.gov.in/registration/auth/register/dsc",
-      "raw_text": "Register / Update DSC",
-      "scraped_at": "2026-05-02T12:22:22.094187",
-      "is_sample": false
+      "id": "gst-003",
+      "title": "GST rate on restaurant services inside hotels revised to 18%",
+      "date": "2025-04-15",
+      "category": "Rate Change",
+      "affects": ["restaurant"],
+      "source": "GST Council 53rd Meeting Decision",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "Following the 53rd GST Council meeting, the tax rate on restaurant services located inside hotels with room tariff exceeding Rs.7,500 per night has been revised to 18% with Input Tax Credit benefit. Standalone restaurants continue at 5% without ITC. This is effective from 1st May 2025.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
+    },
+    {
+      "id": "gst-004",
+      "title": "New HSN code reporting requirements for textile sector from June 2025",
+      "date": "2025-04-10",
+      "category": "Reporting Requirement",
+      "affects": ["textile"],
+      "source": "CBIC Notification 08/2025",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "All textile businesses with turnover above Rs.1.5 crore must mandatorily report 8-digit HSN codes in GSTR-1 from June 2025. Businesses below this threshold must report 4-digit HSN codes. Non-compliance will result in returns being treated as defective and late filing penalties will apply.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
+    },
+    {
+      "id": "gst-005",
+      "title": "Input Tax Credit blocked for medicines sold without prescription record",
+      "date": "2025-04-05",
+      "category": "ITC Rule",
+      "affects": ["pharmacy"],
+      "source": "CBIC Circular 06/2025",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "Pharmacies and medical stores must maintain prescription records for Schedule H and H1 drugs to claim Input Tax Credit on purchases. The CBIC has clarified that ITC will be blocked under Section 17(5) if sales cannot be traced to valid prescriptions during audit.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
+    },
+    {
+      "id": "gst-006",
+      "title": "Annual Return GSTR-9 filing threshold raised to Rs.5 crore",
+      "date": "2025-03-30",
+      "category": "Filing Exemption",
+      "affects": ["restaurant", "kirana", "textile", "pharmacy", "it_services", "general"],
+      "source": "CBIC Notification 10/2025",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "The government has raised the threshold for mandatory filing of GSTR-9 Annual Return to Rs.5 crore for FY 2024-25. Taxpayers with annual aggregate turnover up to Rs.5 crore are exempt from filing GSTR-9 for the financial year 2024-25. This provides significant relief to small businesses.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
+    },
+    {
+      "id": "gst-007",
+      "title": "Kirana stores under composition scheme can now sell online",
+      "date": "2025-03-22",
+      "category": "Policy Change",
+      "affects": ["kirana"],
+      "source": "GST Council Amendment Notification",
+      "url": "https://www.gst.gov.in",
+      "raw_text": "Composition scheme taxpayers including small kirana stores are now permitted to make intra-state supply of goods through e-commerce operators. Earlier composition dealers were barred from selling through platforms like Swiggy Instamart and Blinkit. This change enables small stores to expand digitally without losing composition scheme benefits.",
+      "scraped_at": "2026-05-09T00:00:00",
+      "is_sample": true
     }
   ]
 }
