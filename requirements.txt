@@ -1,7 +1,5 @@
 streamlit
-langchain
-langchain-google-genai
-google-genai
+groq
 python-dotenv
 beautifulsoup4
 requests
