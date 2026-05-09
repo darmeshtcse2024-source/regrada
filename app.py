@@ -1,19 +1,17 @@
 import streamlit as st
 import json
 import os
-from groq import Groq
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # ─────────────────────────────────────────────
-# SETUP GROQ
+# SETUP — Hugging Face
 # ─────────────────────────────────────────────
-try:
-    api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
-    client = Groq(api_key=api_key)
-except Exception as e:
-    st.error(f"API setup error: {e}")
+HF_TOKEN = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN", "")
+API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
+HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -125,15 +123,40 @@ def filter_alerts(alerts, business_type):
                 relevant.append(alert)
     return relevant
 
-def call_groq(prompt):
+def call_ai(prompt):
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.7
+        payload = {
+            "inputs": f"<s>[INST] {prompt} [/INST]",
+            "parameters": {
+                "max_new_tokens": 300,
+                "temperature": 0.7,
+                "return_full_text": False
+            }
+        }
+        response = requests.post(
+            API_URL,
+            headers=HEADERS,
+            json=payload,
+            timeout=30
         )
-        return response.choices[0].message.content.strip()
+        result = response.json()
+
+        # Handle loading state
+        if isinstance(result, dict) and "error" in result:
+            if "loading" in result.get("error", "").lower():
+                return "Model is warming up — please click again in 20 seconds."
+            return f"AI error: {result['error']}"
+
+        if isinstance(result, list) and len(result) > 0:
+            text = result[0].get("generated_text", "")
+            # Clean up the response
+            text = text.replace("<s>", "").replace("</s>", "").strip()
+            return text
+
+        return "Could not get a response. Please try again."
+
+    except requests.exceptions.Timeout:
+        return "Request timed out. Please try again in a moment."
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -149,34 +172,35 @@ Write exactly 3 simple sentences:
 2. How it affects a {business_type} owner
 3. What action to take
 
-No jargon. No bullet points. Plain simple English only."""
-    return call_groq(prompt)
+No jargon. No bullet points. Plain simple English only.
+Answer:"""
+    return call_ai(prompt)
 
 def translate_tamil(text):
-    prompt = f"""Translate this to simple Tamil that a small shop owner in Tamil Nadu understands.
-Use everyday conversational Tamil, not legal Tamil.
+    prompt = f"""Translate this English text to simple Tamil.
+Use everyday Tamil that a small shop owner in Tamil Nadu understands.
+Give only the Tamil translation, nothing else.
 
-Text: {text}
-
-Give only the Tamil translation, nothing else."""
-    return call_groq(prompt)
+English: {text}
+Tamil:"""
+    return call_ai(prompt)
 
 def answer_question(question, business_type, alerts):
     context = "\n".join([
-        f"- {a['title']}: {a['raw_text'][:150]}"
-        for a in alerts[:5]
+        f"- {a['title']}: {a['raw_text'][:120]}"
+        for a in alerts[:4]
     ])
     prompt = f"""You are RegRadar, a GST compliance assistant for Indian small businesses.
 
 Business type: {business_type}
-User question: {question}
+Question: {question}
 
-Recent GST alerts:
+GST alerts context:
 {context}
 
-Answer in 3-4 simple sentences. Be direct and practical.
-If unsure say: Please verify with your CA."""
-    return call_groq(prompt)
+Give a clear, practical answer in 3 sentences. If unsure say: Please verify with your CA.
+Answer:"""
+    return call_ai(prompt)
 
 
 # ─────────────────────────────────────────────
@@ -246,7 +270,7 @@ else:
     if cache_key not in st.session_state:
         with st.spinner("🤖 RegRadar AI is reading your GST alerts..."):
             enriched = []
-            for alert in relevant_alerts[:4]:
+            for alert in relevant_alerts[:3]:
                 eng = explain_english(alert, business_type)
                 tam = translate_tamil(eng)
                 enriched.append({
