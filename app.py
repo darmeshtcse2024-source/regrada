@@ -7,24 +7,34 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ─────────────────────────────────────────────
-# SETUP — Gemini via REST API
+# SETUP — Nvidia API
 # ─────────────────────────────────────────────
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY") or st.secrets.get("NVIDIA_API_KEY", "")
 
 def call_ai(prompt):
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
         response = requests.post(
-            url,
-            json={"contents": [{"parts": [{"text": prompt}]}]},
+            "https://integrate.api.nvidia.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "meta/llama-4-maverick-17b-128e-instruct",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 400,
+                "temperature": 0.7
+            },
             timeout=30
         )
         data = response.json()
-        if "candidates" in data:
-            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        if "choices" in data:
+            return data["choices"][0]["message"]["content"].strip()
         elif "error" in data:
             return f"Error: {data['error']['message']}"
         return "No response. Please try again."
+    except requests.exceptions.Timeout:
+        return "Request timed out. Please try again."
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -184,7 +194,6 @@ GST alerts context:
 {context}
 
 Answer in 3 clear practical sentences. Say "Please verify with your CA" if unsure.""")
-
 
 # ─────────────────────────────────────────────
 # HEADER
