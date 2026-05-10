@@ -6,15 +6,31 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ─────────────────────────────────────────────
+# SETUP — Gemini via REST API
+# ─────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
-API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-HEADERS = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-    "HTTP-Referer": "https://regrada.streamlit.app",
-    "X-Title": "RegRadar"
-}
 
+def call_ai(prompt):
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        response = requests.post(
+            url,
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=30
+        )
+        data = response.json()
+        if "candidates" in data:
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        elif "error" in data:
+            return f"Error: {data['error']['message']}"
+        return "No response. Please try again."
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# ─────────────────────────────────────────────
+# PAGE CONFIG
+# ─────────────────────────────────────────────
 st.set_page_config(
     page_title="RegRadar — GST Alerts for MSMEs",
     page_icon="📡",
@@ -107,15 +123,6 @@ BUSINESS_OPTIONS = {
     "🏢  General / Other Business":     "general",
 }
 
-# Try multiple free models in order until one works
-FREE_MODELS = [
-    "google/gemma-3-1b-it:free",
-    "qwen/qwen3-0.6b:free",
-    "meta-llama/llama-3.2-3b-instruct:free",
-    "deepseek/deepseek-r1-0528:free",
-    "microsoft/phi-3-mini-128k-instruct:free",
-]
-
 # ─────────────────────────────────────────────
 # FUNCTIONS
 # ─────────────────────────────────────────────
@@ -142,52 +149,6 @@ def filter_alerts(alerts, business_type):
                 relevant.append(alert)
     return relevant
 
-def call_ai(prompt):
-    # Try each model until one works
-    for model in FREE_MODELS:
-        try:
-            response = requests.post(
-                API_URL,
-                headers=HEADERS,
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 400,
-                    "temperature": 0.7
-                },
-                timeout=30
-            )
-            data = response.json()
-
-            if "choices" in data and len(data["choices"]) > 0:
-                text = data["choices"][0]["message"]["content"].strip()
-                if text:
-                    return text
-
-            # If this model failed, try next one
-            continue
-
-        except requests.exceptions.Timeout:
-            continue
-        except Exception:
-            continue
-
-    return "All AI models are currently busy. Please try again in 30 seconds."
-def call_ai(prompt):
-    try:
-        response = requests.post(
-            API_URL,
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=30
-        )
-        data = response.json()
-        if "candidates" in data:
-            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        elif "error" in data:
-            return f"Error: {data['error']['message']}"
-        return "No response. Please try again."
-    except Exception as e:
-        return f"Error: {str(e)}"
 def explain_english(alert, business_type):
     return call_ai(f"""You are a GST advisor for Indian small businesses.
 
@@ -235,7 +196,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-
 # ─────────────────────────────────────────────
 # SCREEN 1 — BUSINESS SELECTOR
 # ─────────────────────────────────────────────
@@ -243,7 +203,6 @@ st.markdown("### 🏪 Select Your Business Type")
 selected_label = st.selectbox("Choose your business:", list(BUSINESS_OPTIONS.keys()))
 business_type = BUSINESS_OPTIONS[selected_label]
 st.markdown("---")
-
 
 # ─────────────────────────────────────────────
 # SCREEN 2 — ALERT DASHBOARD
@@ -260,7 +219,6 @@ relevant_alerts = filter_alerts(all_alerts, business_type)
 if not relevant_alerts:
     st.warning("No alerts found for this business type.")
 else:
-    # Stats row
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f'<div class="stat-box"><div class="stat-num">{len(relevant_alerts)}</div><div class="stat-label">Active Alerts</div></div>', unsafe_allow_html=True)
@@ -269,3 +227,88 @@ else:
         st.markdown(f'<div class="stat-box"><div class="stat-num">{d}</div><div class="stat-label">Deadlines</div></div>', unsafe_allow_html=True)
     with col3:
         r = len([a for a in relevant_alerts if a.get("category") == "Rate Change"])
+        st.markdown(f'<div class="stat-box"><div class="stat-num">{r}</div><div class="stat-label">Rate Changes</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    cache_key = f"enriched_{business_type}"
+    if cache_key not in st.session_state:
+        with st.spinner("🤖 RegRadar AI is reading your GST alerts..."):
+            enriched = []
+            for alert in relevant_alerts[:3]:
+                eng = explain_english(alert, business_type)
+                tam = translate_tamil(eng)
+                enriched.append({
+                    "title": alert["title"],
+                    "date": alert["date"],
+                    "category": alert["category"],
+                    "english": eng,
+                    "tamil": tam
+                })
+            st.session_state[cache_key] = enriched
+
+    for item in st.session_state[cache_key]:
+        st.markdown(f"""
+        <div class="alert-card">
+            <div class="alert-title">{item['title']}</div>
+            <div class="alert-meta">
+                <span class="category-badge">{item['category']}</span>
+                📅 {item['date']}
+            </div>
+            <div class="alert-eng">{item['english']}</div>
+            <div class="tamil-label">🇮🇳 தமிழில் படிக்கவும்</div>
+            <div class="alert-tamil">{item['tamil']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ─────────────────────────────────────────────
+# SCREEN 3 — Q&A CHAT
+# ─────────────────────────────────────────────
+st.markdown("### 💬 Ask RegRadar")
+st.markdown("Type any GST question — RegRadar answers instantly.")
+
+if "question_input" not in st.session_state:
+    st.session_state.question_input = ""
+
+c1, c2, c3 = st.columns(3)
+with c1:
+    if st.button("📅 Do I need to file GSTR-9?"):
+        st.session_state.question_input = "Do I need to file GSTR-9 this year?"
+with c2:
+    if st.button("💰 Any rate changes for me?"):
+        st.session_state.question_input = f"Any GST rate changes for my {business_type}?"
+with c3:
+    if st.button("⚠️ What deadlines are coming?"):
+        st.session_state.question_input = "What GST deadlines are coming up soon?"
+
+user_q = st.text_input(
+    "Your question:",
+    value=st.session_state.question_input,
+    placeholder="e.g. Do I need e-invoicing? When is my GST deadline?"
+)
+
+if st.button("🔍 Get Answer", type="primary"):
+    if user_q.strip():
+        with st.spinner("RegRadar is thinking..."):
+            ans = answer_question(user_q, business_type, relevant_alerts)
+        st.session_state["last_answer"] = ans
+    else:
+        st.warning("Please type a question first.")
+
+if "last_answer" in st.session_state:
+    st.markdown(f"""
+    <div class="chat-answer">
+        <strong>RegRadar:</strong><br><br>
+        {st.session_state['last_answer']}
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("---")
+st.markdown(
+    "<p style='text-align:center;color:#a0aec0;font-size:0.8rem'>"
+    "RegRadar — Built for ET AI Hackathon 2.0 | Not a substitute for professional CA advice"
+    "</p>",
+    unsafe_allow_html=True
+)
