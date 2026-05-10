@@ -6,11 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─────────────────────────────────────────────
-# SETUP — OpenRouter
-# ─────────────────────────────────────────────
-API_KEY = os.getenv("OPENROUTER_API_KEY") or st.secrets.get("OPENROUTER_API_KEY", "")
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
+API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
 HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
     "Content-Type": "application/json",
@@ -176,7 +173,21 @@ def call_ai(prompt):
             continue
 
     return "All AI models are currently busy. Please try again in 30 seconds."
-
+def call_ai(prompt):
+    try:
+        response = requests.post(
+            API_URL,
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=30
+        )
+        data = response.json()
+        if "candidates" in data:
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        elif "error" in data:
+            return f"Error: {data['error']['message']}"
+        return "No response. Please try again."
+    except Exception as e:
+        return f"Error: {str(e)}"
 def explain_english(alert, business_type):
     return call_ai(f"""You are a GST advisor for Indian small businesses.
 
